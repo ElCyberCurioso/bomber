@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Bomber</title>
+  <meta name="description" content="Bomber: juego de bombas multijugador en el navegador. Salas públicas y privadas, habilidades y cinco modos de juego.">
+  <meta name="theme-color" content="#1f2329">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="fonts/bungee.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/rubik.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="vendor/peerjs.min.js" defer></script>
+  <script type="module" src="js/main.js"></script>
+</head>
+<body>
+  <noscript><p class="noscript">Bomber necesita JavaScript para funcionar.</p></noscript>
+
+  <!-- ================================================================ menú -->
+  <section id="screen-menu" class="screen active" aria-label="Menú principal">
+    <canvas id="demo" class="demo" aria-hidden="true"></canvas>
+    <div class="menu-shade"></div>
+    <div class="menu">
+      <header class="brand">
+        <h1 class="logo">Bomber</h1>
+        <div class="tape" aria-hidden="true"></div>
+        <p class="tagline">Deja bombas, abre camino y sé el último en pie. Online con tus amigos o contra bots.</p>
+      </header>
+
+      <div class="card profile">
+        <label class="field">
+          <span>Tu nombre</span>
+          <input id="name" maxlength="16" autocomplete="nickname" spellcheck="false" placeholder="Jugador">
+        </label>
+        <div class="field">
+          <span id="colorLabel">Color</span>
+          <div class="swatches" id="colors" role="radiogroup" aria-labelledby="colorLabel"></div>
+        </div>
+        <div class="field">
+          <span id="abilityLabel">Habilidad</span>
+          <div class="abilities" id="abilities" role="radiogroup" aria-labelledby="abilityLabel"></div>
+          <p class="ability-desc" id="abilityDesc"></p>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn hazard big" id="btnQuick">Partida rápida</button>
+        <div class="row3">
+          <button class="btn" id="btnBrowse">Buscar salas</button>
+          <button class="btn" id="btnCreate">Crear sala</button>
+          <button class="btn" id="btnJoin">Unirse con código</button>
+        </div>
+        <button class="btn ghost" id="btnPractice">Practicar contra bots</button>
+      </div>
+
+      <nav class="menu-foot">
+        <button class="link" id="btnHelp">Cómo se juega</button>
+        <button class="link" id="btnSettings">Ajustes</button>
+      </nav>
+    </div>
+  </section>
+
+  <!-- ========================================================== buscar salas -->
+  <section id="screen-browse" class="screen" aria-label="Salas públicas">
+    <div class="page">
+      <header class="page-head">
+        <button class="btn small ghost back" data-back>Volver</button>
+        <h2>Salas públicas</h2>
+        <button class="btn small" id="btnRefresh">Actualizar</button>
+      </header>
+      <p class="page-note" id="browseStatus">Buscando salas…</p>
+      <ul class="rooms" id="roomList"></ul>
+      <div class="empty" id="browseEmpty" hidden>
+        <p>No hay salas públicas abiertas ahora mismo.</p>
+        <button class="btn hazard" id="btnCreatePublic">Crear una sala pública</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================= sala de espera -->
+  <section id="screen-lobby" class="screen" aria-label="Sala de espera">
+    <div class="page lobby">
+      <header class="lobby-head">
+        <button class="btn small ghost" id="btnLeaveLobby">Salir</button>
+        <div class="room-title">
+          <h2 id="roomName">Sala</h2>
+          <p id="roomKind" class="muted"></p>
+        </div>
+        <div class="room-code" id="roomCodeBox">
+          <span class="muted">Código</span>
+          <strong id="roomCode">-----</strong>
+          <button class="btn small" id="btnCopyLink">Copiar enlace</button>
+        </div>
+      </header>
+
+      <div class="lobby-grid">
+        <section class="panel players-panel" aria-labelledby="playersTitle">
+          <div class="panel-head">
+            <h3 id="playersTitle">Jugadores</h3>
+            <span class="muted" id="playerCount"></span>
+          </div>
+          <div id="playerList" class="player-list"></div>
+          <button class="btn small" id="btnAddBot">Añadir bot</button>
+        </section>
+
+        <section class="panel settings-panel" aria-labelledby="settingsTitle">
+          <div class="panel-head">
+            <h3 id="settingsTitle">Partida</h3>
+            <span class="muted" id="settingsNote"></span>
+          </div>
+          <div class="modes" id="modePick" role="radiogroup" aria-label="Modo de juego"></div>
+          <p class="mode-desc" id="modeDesc"></p>
+          <div class="settings-grid" id="settingsGrid"></div>
+        </section>
+
+        <section class="panel you-panel" aria-labelledby="youTitle">
+          <div class="panel-head"><h3 id="youTitle">Tú</h3></div>
+          <div class="swatches small" id="lobbyColors" role="radiogroup" aria-label="Color"></div>
+          <div class="abilities small" id="lobbyAbilities" role="radiogroup" aria-label="Habilidad"></div>
+          <p class="ability-desc" id="lobbyAbilityDesc"></p>
+          <div class="team-pick" id="teamPick" hidden>
+            <button class="btn small team0" data-team="0">Rojos</button>
+            <button class="btn small team1" data-team="1">Azules</button>
+          </div>
+          <div class="start-box">
+            <button class="btn hazard big" id="btnReady">Estoy listo</button>
+            <p class="muted start-note" id="startNote"></p>
+          </div>
+        </section>
+
+        <section class="panel chat-panel" id="chatPanel" aria-labelledby="chatTitle">
+          <div class="panel-head"><h3 id="chatTitle">Chat</h3></div>
+          <div class="chat-log" id="chatLog" aria-live="polite"></div>
+          <form class="chat-form" id="chatForm" autocomplete="off">
+            <input id="chatInput" maxlength="140" placeholder="Escribe un mensaje" aria-label="Mensaje">
+            <button class="btn small" type="submit">Enviar</button>
+          </form>
+        </section>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================ juego -->
+  <section id="screen-game" class="screen" aria-label="Partida">
+    <header class="hud-top">
+      <div class="hud-players" id="hudPlayers"></div>
+      <div class="hud-center">
+        <div class="hud-mode" id="hudMode"></div>
+        <div class="hud-timer" id="hudTimer">0:00</div>
+        <div class="hud-round" id="hudRound"></div>
+      </div>
+      <div class="hud-right">
+        <span class="hud-ping" id="hudPing"></span>
+        <button class="btn small ghost" id="btnPause" aria-label="Pausa y opciones">Menú</button>
+      </div>
+    </header>
+    <div class="stage" id="stage">
+      <canvas id="board" aria-label="Tablero de juego"></canvas>
+      <div class="banner" id="banner" aria-live="assertive"></div>
+      <div class="killfeed" id="killfeed" aria-live="polite"></div>
+      <div class="game-toast" id="gameToast"></div>
+      <div class="respawn-note" id="respawnNote" hidden></div>
+    </div>
+    <footer class="hud-self" id="hudSelf"></footer>
+
+    <div class="touch" id="touch" hidden>
+      <div class="stick-zone"><div class="stick"><div class="knob"></div></div></div>
+      <div class="tbtns">
+        <button class="tbtn tbtn-ability" aria-label="Habilidad"></button>
+        <button class="tbtn tbtn-bomb" aria-label="Bomba"></button>
+      </div>
+    </div>
+
+    <form class="game-chat" id="gameChat" hidden autocomplete="off" onsubmit="return false">
+      <input maxlength="140" placeholder="Mensaje (Intro para enviar, Esc para cerrar)" aria-label="Mensaje de chat">
+    </form>
+
+    <div class="overlay" id="pauseMenu" hidden>
+      <div class="dialog">
+        <h2>Menú</h2>
+        <p class="muted">La partida sigue en marcha mientras este menú está abierto.</p>
+        <button class="btn hazard" id="btnResume">Seguir jugando</button>
+        <div class="sliders">
+          <label>Efectos <input type="range" min="0" max="100" data-pref="sfx"></label>
+          <label>Música <input type="range" min="0" max="100" data-pref="musicVol"></label>
+        </div>
+        <button class="btn danger" id="btnQuitGame">Salir de la partida</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="scoreboard" hidden>
+      <div class="dialog wide">
+        <table class="score-table">
+          <thead><tr><th>#</th><th>Jugador</th><th>Rondas</th><th>Derribos</th><th>Caídas</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="overlay" id="results" hidden>
+      <div class="dialog wide results">
+        <div class="tape thin" aria-hidden="true"></div>
+        <p class="res-mode muted"></p>
+        <h2 class="res-title">Resultados</h2>
+        <table class="score-table">
+          <thead><tr><th>#</th><th>Jugador</th><th class="col-main">Rondas</th><th>Derribos</th><th>Caídas</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <div class="res-actions">
+          <button class="btn hazard" id="resBack">Volver a la sala</button>
+          <p class="muted" id="resWait">Esperando a que el anfitrión vuelva a la sala…</p>
+          <button class="btn ghost" id="resLeave">Salir</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ diálogos -->
+  <dialog id="dlgCreate" class="dialog-el">
+    <form method="dialog" class="dialog" id="formCreate">
+      <h2>Crear sala</h2>
+      <label class="field"><span>Nombre de la sala</span><input id="roomNameInput" maxlength="28" placeholder="Sala de…"></label>
+      <div class="field">
+        <span id="visLabel">Visibilidad</span>
+        <div class="seg" role="radiogroup" aria-labelledby="visLabel">
+          <label><input type="radio" name="vis" value="public" checked><span>Pública</span></label>
+          <label><input type="radio" name="vis" value="private"><span>Privada</span></label>
+        </div>
+        <p class="hint" id="visHint">Aparece en la lista de salas y en la partida rápida.</p>
+      </div>
+      <div class="field">
+        <span>Modo</span>
+        <select id="createMode"></select>
+      </div>
+      <div class="dlg-actions">
+        <button class="btn ghost" value="cancel" formnovalidate>Cancelar</button>
+        <button class="btn hazard" id="btnDoCreate" value="ok">Crear sala</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlgJoin" class="dialog-el">
+    <form method="dialog" class="dialog" id="formJoin">
+      <h2>Unirse con código</h2>
+      <label class="field"><span>Código de la sala</span>
+        <input id="joinCode" class="code-input" maxlength="8" autocomplete="off" spellcheck="false" placeholder="ABC23" autocapitalize="characters">
+      </label>
+      <p class="hint">Te lo da quien creó la sala. Las salas públicas tienen códigos como P3.</p>
+      <div class="dlg-actions">
+        <button class="btn ghost" value="cancel" formnovalidate>Cancelar</button>
+        <button class="btn hazard" value="ok">Entrar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlgSettings" class="dialog-el">
+    <form method="dialog" class="dialog">
+      <h2>Ajustes</h2>
+      <div class="sliders">
+        <label>Efectos <input type="range" min="0" max="100" data-pref="sfx"></label>
+        <label>Música <input type="range" min="0" max="100" data-pref="musicVol"></label>
+      </div>
+      <label class="check"><input type="checkbox" data-pref="music"> Música durante la partida</label>
+      <label class="check"><input type="checkbox" data-pref="shake"> Temblor de pantalla en las explosiones</label>
+      <label class="field"><span>Controles táctiles</span>
+        <select data-pref="touch">
+          <option value="auto">Automático</option>
+          <option value="on">Mostrar siempre</option>
+          <option value="off">No mostrar</option>
+        </select>
+      </label>
+      <div class="dlg-actions"><button class="btn hazard" value="ok">Hecho</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="dlgHelp" class="dialog-el">
+    <form method="dialog" class="dialog wide help">
+      <h2>Cómo se juega</h2>
+      <div class="help-cols">
+        <section>
+          <h3>Controles</h3>
+          <dl class="keys">
+            <dt><kbd>WASD</kbd> o flechas</dt><dd>Moverse</dd>
+            <dt><kbd>Espacio</kbd> o <kbd>J</kbd></dt><dd>Poner bomba</dd>
+            <dt><kbd>Mayús</kbd> o <kbd>K</kbd></dt><dd>Usar habilidad</dd>
+            <dt><kbd>Intro</kbd></dt><dd>Chat</dd>
+            <dt><kbd>Tab</kbd></dt><dd>Clasificación</dd>
+            <dt><kbd>Esc</kbd></dt><dd>Menú</dd>
+          </dl>
+          <p class="hint">También funciona con mando y con controles táctiles en el móvil.</p>
+          <h3>Modos</h3>
+          <ul class="help-list" id="helpModes"></ul>
+        </section>
+        <section>
+          <h3>Potenciadores</h3>
+          <ul class="help-list icons" id="helpItems"></ul>
+          <h3>Habilidades</h3>
+          <ul class="help-list icons" id="helpAbilities"></ul>
+        </section>
+      </div>
+      <div class="dlg-actions"><button class="btn hazard" value="ok">Entendido</button></div>
+    </form>
+  </dialog>
+
+  <div class="overlay connecting" id="connecting" hidden>
+    <div class="dialog">
+      <div class="fuse-loader" aria-hidden="true"></div>
+      <p id="connectingText">Conectando…</p>
+      <button class="btn ghost small" id="btnCancelConnect">Cancelar</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
